@@ -1,0 +1,31 @@
+{
+    {% 
+        assign transaction_details = connector.transactionDetails(),
+        url = connector.paymentCompleteUrl(),
+        params = connector.extractQueryParams(url),
+        reference_id = connector.retrieve("merchant_transaction_id"),
+        params.amount = transaction_details.amount,
+        params.gateway_reference_id = reference_id,
+        params.currency_code = transaction_details.currency_code,
+        params.transaction_status = connector.paymentFailureStatus(),
+        params.gateway_errorcode = connector.retrieve("error_code"),
+        params.zcm_error_code = connector.getErrorCode(params.gateway_errorcode),
+        signKey = connector.getConfigData("signKey")
+    %}
+
+	{% assign signature = connector.sortAndSign("HmacSha256", "", params, signKey) %}
+
+	{% if url contains "?" %}
+        {% url = url | append("&") %}
+    {% else %}
+        {% url = url | append("?") %}
+    {% endif %}
+
+    {% capture failure_data %}amount={{ params.amount }}&gateway_reference_id={{ params.gateway_reference_id }}&currency_code={{ params.currency_code }}&transaction_status={{ params.transaction_status }}&gateway_errorcode={{ params.gateway_errorcode }}&zcm_error_code={{ params.zcm_error_code }}&signature={{signature}}{% endcapture %}
+
+
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{url | append(failure_data)}}"
+    }
+}

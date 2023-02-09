@@ -1,0 +1,41 @@
+{
+    {% 
+        assign response_base64 = request.form_data.response,
+        response = connector.base64Decode(response_base64) | parseJSON,
+        code = response.code | trim,
+        data = response.data | defaultValue(""),
+        
+        transaction_details = connector.transactionDetails(),
+        url = connector.paymentCompleteUrl(),
+        params = connector.extractQueryParams(url),
+        reference_id = data.merchantTransactionId | defaultValue(connector.retrieve("merchant_transaction_id")),
+        params.amount = transaction_details.amount,
+        params.gateway_reference_id = reference_id,
+        params.currency_code = transaction_details.currency_code
+    %}
+
+    {% if code == "PAYMENT_PENDING" %}
+        {% params.transaction_status = connector.paymentPendingStatus() %}
+    {% elif code == "PAYMENT_SUCCESS" %}
+    	{% params.transaction_status = connector.paymentSuccessStatus() %}
+	{% else %}
+    	{% params.transaction_status = connector.paymentFailureStatus() %}
+	{% endif %}
+
+	{% assign signKey = connector.getConfigData("signKey"),
+        signature = connector.sortAndSign("HmacSha256", "", params, signKey) %}
+
+    {% if url contains "?" %}
+        {% url = url | append("&") %}
+    {% else %}
+        {% url = url | append("?") %}
+    {% endif %}
+
+	{% capture return_data %}amount={{ params.amount }}&gateway_reference_id={{ params.gateway_reference_id }}&currency_code={{ params.currency_code }}&transaction_status={{ params.transaction_status }}&signature={{signature}}{% endcapture %}
+
+
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{url | append(return_data)}}"
+    }
+}

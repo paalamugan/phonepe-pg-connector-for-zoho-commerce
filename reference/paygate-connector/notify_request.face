@@ -1,0 +1,106 @@
+{
+
+	{% comment %}
+PAY_METHOD ->
+CC 	Credit Card
+DC 	Debit Card
+EW 	E-Wallet
+BT 	Bank Transfer
+CV 	Cash Voucher
+PC 	Pre-Paid Card
+
+TRANSACTION_STATUS ->
+0 	Not Done
+1 	Approved
+2 	Declined
+3 	Cancelled
+4 	User Cancelled
+5 	Received by PayGate
+7 	Settlement Voided
+
+
+RESULT_CODE ->
+900001 	Call for Approval
+900002 	Card Expired
+900003 	Insufficient Funds
+900004 	Invalid Card Number
+900005 	Bank Interface Timeout 	Indicates a communications failure between the banks systems.
+900006 	Invalid Card
+900007 	Declined
+900009 	Lost Card
+900010 	Invalid Card Length
+900011 	Suspected Fraud
+900012 	Card Reported as Stolen
+900013 	Restricted Card
+900014 	Excessive Card Usage
+900015 	Card Blacklisted
+900207 	Declined; authentication failed 	Indicates the cardholder did not enter their MasterCard SecureCode / Verified by Visa password correctly.
+990020 	Auth Declined
+900210 	3D Secure Lookup Timeout
+991001 	Invalid expiry date
+991002 	Invalid Amount
+	{% endcomment %}
+    {%
+        assign transaction_details = connector.transactionDetails(),
+        url = connector.paymentNotificationUrl(),
+        params = connector.extractQueryParams(url),
+        reference_id = request.form_data.PAY_REQUEST_ID,
+        params.amount = request.form_data.AMOUNT | divide(100),
+        params.gateway_reference_id = reference_id,
+        params.currency_code = request.form_data.CURRENCY,
+        password = connector.getConfigData("password")
+    %}
+
+    {%
+        assign value_to_checksum = request.form_data.PAYGATE_ID |
+                                    append(request.form_data.PAY_REQUEST_ID) |
+                                    append(request.form_data.REFERENCE) |
+                                    append(request.form_data.TRANSACTION_STATUS) |
+                                    append(request.form_data.RESULT_CODE) |
+                                    append(request.form_data.AUTH_CODE) |
+                                    append(request.form_data.CURRENCY) |
+                                    append(request.form_data.AMOUNT) |
+                                    append(request.form_data.RESULT_DESC) |
+                                    append(request.form_data.TRANSACTION_ID) |
+                                    append(request.form_data.RISK_INDICATOR) |
+                                    append(request.form_data.PAY_METHOD) |
+                                    append(request.form_data.PAY_METHOD_DETAIL) |
+                                    append(request.form_data.USER1) |
+                                    append(request.form_data.USER2) |
+                                    append(request.form_data.USER3) |
+                                    append(request.form_data.VAULT_ID) |
+                                    append(request.form_data.PAYVAULT_DATA_1) |
+                                    append(request.form_data.PAYVAULT_DATA_2) |
+                                    append(password),
+        checksum = connector.md5(value_to_checksum)
+    %}
+
+    {% if request.form_data.CHECKSUM == checksum %}
+    	{% connector.store("notify_checksum_match","true") %}
+	    {% if request.form_data.TRANSACTION_STATUS == "1" %}
+	    	{% params.transaction_status = connector.paymentSuccessStatus() %}
+		{% elif request.form_data.TRANSACTION_STATUS == "5" %}
+	    	{% params.transaction_status = connector.paymentPendingStatus() %}
+		{% else %}
+	    	{% assign params.transaction_status = connector.paymentFailureStatus(), 
+               params.gateway_errorcode = request.form_data.RESULT_CODE | trim,
+               params.zcm_error_code = connector.getErrorCode(params.gateway_errorcode) | trim
+            %}
+		{% endif %}
+
+		{% 	assign signKey = connector.getConfigData("signKey"),
+			signature = connector.sortAndSign("HmacSha256", "", params, signKey)
+		%}
+
+		{% if url contains "?" %}
+	    	{% url = url | append("&") %}
+		{% else %}
+	    	{% url = url | append("?") %}
+		{% endif %}
+
+		{% capture notify_data %}amount={{ params.amount }}&gateway_reference_id={{ params.gateway_reference_id }}&currency_code={{ params.currency_code }}&transaction_status={{ params.transaction_status }}{% if params.transaction_status == 0 %}&gateway_errorcode={{ params.gateway_errorcode }}&zcm_error_code={{ params.zcm_error_code }}{% endif %}&signature={{signature}}{% endcapture %}
+
+		"url" : "{{url | append(notify_data)}}",
+	    "method" : "POST"
+	{% endif %}
+}

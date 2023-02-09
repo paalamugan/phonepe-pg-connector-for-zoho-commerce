@@ -1,0 +1,51 @@
+{
+    {% 
+        assign transaction_details = connector.transactionDetails(),
+        url = connector.paymentCompleteUrl(),
+        params = connector.extractQueryParams(url),
+        reference_id = request.form_data.PAY_REQUEST_ID,
+        params.amount = transaction_details.amount,
+        params.gateway_reference_id = reference_id,
+        params.currency_code = transaction_details.currency_code,
+        password = connector.getConfigData("password")
+    %}
+
+    {%
+
+        assign pay_request_id = connector.retrieve("pay_request_id"),
+        value_to_checksum = connector.getConfigData("paygateID") |
+                                    append(pay_request_id) |
+                                    append(request.form_data.TRANSACTION_STATUS) |
+                                    append(request.initial_data.form_data.reference_id) |
+                                    append(password),
+        checksum = connector.md5(value_to_checksum)
+    %}
+
+
+    {% if request.form_data.CHECKSUM != checksum %}
+        {% params.transaction_status = connector.paymentPendingStatus() %}
+    {% elif request.form_data.TRANSACTION_STATUS == "1" %}
+    	{% params.transaction_status = connector.paymentSuccessStatus() %}
+	{% elif request.form_data.TRANSACTION_STATUS == "5" %}
+    	{% params.transaction_status = connector.paymentPendingStatus() %}
+	{% else %}
+    	{% params.transaction_status = connector.paymentFailureStatus() %}
+	{% endif %}
+
+	{% assign signKey = connector.getConfigData("signKey"),
+        signature = connector.sortAndSign("HmacSha256", "", params, signKey) %}
+
+    {% if url contains "?" %}
+        {% url = url | append("&") %}
+    {% else %}
+        {% url = url | append("?") %}
+    {% endif %}
+
+	{% capture return_data %}amount={{ params.amount }}&gateway_reference_id={{ params.gateway_reference_id }}&currency_code={{ params.currency_code }}&transaction_status={{ params.transaction_status }}&signature={{signature}}{% endcapture %}
+
+
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{url | append(return_data)}}"
+    }
+}

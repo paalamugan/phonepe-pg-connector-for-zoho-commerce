@@ -1,0 +1,8 @@
+{
+	{% assign notify_checksum_match = connector.retrieve("notify_checksum_match") %} 
+	{% if notify_checksum_match == "true" %}
+		"response_text": "OK"
+	{% else %}
+		"response_text": "NOT_OK"
+	{% endif %}
+}

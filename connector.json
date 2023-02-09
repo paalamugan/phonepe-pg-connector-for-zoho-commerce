@@ -1,0 +1,62 @@
+{
+	"gateway_name": "PhonePe",
+	"description": "PhonePe is a Digital Wallet & Online Payment App that allows you to make instant Money Transfers with UPI. Recharge Mobile, DTH, Pay Utility Bills, Buy/Invest in Gold, Mutual Funds, Insurance & much more.",
+	"type": "server_redirection",
+	"endpoints": {
+		"/notify": {
+			"request_transform": "notify_request",
+			"response_transform": "notify_response",
+			"type": "notify"
+		},
+		"/initiate": {
+			"request_transform": "initiate_request",
+			"response_transform": "initiate_response",
+			"type": "initiate_payment"
+		},
+		"/redirect": {
+			"response_transform": "redirect_response",
+			"type": "redirect"
+		},
+		"/return": {
+			"request_transform": "return_request",
+			"response_transform": "return_response",
+			"type": "return"
+		},
+		"/failure": {
+			"response_transform": "failure_response",
+			"type": "failure"
+		}
+	},
+	"instance_fields": [
+		{
+			"field_label": "Enter your Merchant Id",
+			"field_name": "merchantId",
+			"field_type": "string",
+			"field_max_length": "38"
+		},
+		{
+			"field_label": "Enter your Salt Key",
+			"field_name": "saltKey",
+			"field_type": "string",
+			"field_min_length": "36"
+		}
+	],
+	"shared_config": {
+		"supported_currencies": [
+			"INR"
+		],
+		"supported_payment_modes": [
+			"credit_card",
+			"debit_card"
+		]
+	},
+	"error_codes": {
+		"BAD_REQUEST": "100",
+		"AUTHORIZATION_FAILED": "102",
+		"INTERNAL_SERVER_ERROR": "142",
+		"TRANSACTION_NOT_FOUND": "103",
+		"PAYMENT_ERROR": "130",
+		"PAYMENT_DECLINED": "111",
+		"TIMED_OUT": "142"
+	}
+}

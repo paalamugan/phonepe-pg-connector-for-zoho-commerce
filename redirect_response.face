@@ -1,0 +1,7 @@
+{
+    {% assign redirect_url = connector.retrieve("redirect_url") %}
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{redirect_url}}"
+    }
+}

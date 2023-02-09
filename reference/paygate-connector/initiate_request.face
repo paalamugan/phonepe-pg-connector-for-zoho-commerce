@@ -1,0 +1,44 @@
+{
+    "url" : "https://secure.paygate.co.za/payweb3/initiate.trans",
+    "method" : "POST",
+    "headers" : {
+        "content-type" : "application/x-www-form-urlencoded",
+    }
+
+    {% assign params = {}%}
+    {% assign password = connector.getConfigData("password") %}
+
+    {% 
+        assign reference_id = request.form_data.reference_id,
+        iso2_country_code = request.form_data.customer_shipping_country_code | lower,
+        params.PAYGATE_ID = connector.getConfigData("paygateID"),
+        params.REFERENCE = reference_id,
+        params.CURRENCY = request.form_data.currency_code,
+        params.AMOUNT = request.form_data.amount | multiply(100) | floatValue | splitFirst("."),
+        params.RETURN_URL = connector.getUrl("/return"),
+        params.TRANSACTION_DATE = connector.getCurrentTime("yyyy-MM-dd HH:mm:ss","UTC"),
+        params.LOCALE = request.form_data.organization_language_code | append("-") | append(iso2_country_code),
+        params.COUNTRY = connector.getISO3CountryCode(request.form_data.organization_language_code, iso2_country_code) | upper,
+        params.EMAIL = request.form_data.email,
+        params.NOTIFY_URL = connector.getUrl("/notify")
+    %}
+    {%
+
+        assign value_to_checksum = params.PAYGATE_ID |
+                                    append(params.REFERENCE) |
+                                    append(params.AMOUNT) |
+                                    append(params.CURRENCY) |
+                                    append(params.RETURN_URL) |
+                                    append(params.TRANSACTION_DATE) |
+                                    append(params.LOCALE) |
+                                    append(params.COUNTRY) |
+                                    append(params.EMAIL) |
+                                    append(params.NOTIFY_URL) |
+                                    append(password),
+        params.CHECKSUM = connector.md5(value_to_checksum)
+    %}
+
+    {% capture post_data %}PAYGATE_ID={{ params.PAYGATE_ID }}&REFERENCE={{ params.REFERENCE }}&AMOUNT={{ params.AMOUNT }}&CURRENCY={{ params.CURRENCY }}&RETURN_URL={{ params.RETURN_URL}}&TRANSACTION_DATE={{ params.TRANSACTION_DATE }}&LOCALE={{ params.LOCALE }}&COUNTRY={{ params.COUNTRY }}&EMAIL={{ params.EMAIL }}&NOTIFY_URL={{ params.NOTIFY_URL}}&CHECKSUM={{ params.CHECKSUM }}{% endcapture %}
+
+    "body" : "{{post_data | strip}}"
+}

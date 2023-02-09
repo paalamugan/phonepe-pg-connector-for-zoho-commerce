@@ -1,0 +1,27 @@
+
+{%  
+    assign response_json = connector.queryStringToJson(response.response_text),
+    password = connector.getConfigData("password"),
+    PAY_REQUEST_ID = response_json.PAY_REQUEST_ID
+%}
+{% if PAY_REQUEST_ID != "" %}
+    {%
+        assign value_to_checksum = response_json.PAYGATE_ID | 
+                                        append(PAY_REQUEST_ID) |
+                                        append(response_json.REFERENCE) |
+                                        append(password),
+        checksum = connector.md5(value_to_checksum),
+        location_url = connector.getUri("/redirect")
+    %}
+    {%  connector.store("pay_request_id",PAY_REQUEST_ID) %}
+    {%  connector.store("checksum",checksum) %}
+{% else %}
+    {%  connector.store("error_code",response_json.ERROR) %}
+    {%  assign location_url = connector.getUri("/failure") %}
+{% endif %}
+{
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{location_url}}"
+    }
+}

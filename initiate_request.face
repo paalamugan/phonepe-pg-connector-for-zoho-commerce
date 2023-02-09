@@ -1,0 +1,44 @@
+{
+    {% 
+        assign merchant_id = connector.getConfigData("merchantId"),
+        saltKey = connector.getConfigData("saltKey"),
+        saltIndex = 1,
+        paymentApiEndpoint = "https://api-preprod.phonepe.com/apis/merchant-simulator",
+        paymentPath = "/pg/v1/pay"
+    %}
+
+    {% assign params = {}, body = {} %}
+
+    {% 
+        assign reference_id = request.form_data.reference_id,
+        account_id = request.form_data.account_id,
+        iso2_country_code = request.form_data.customer_shipping_country_code | lower,
+        params.merchantId = merchant_id,
+        params.merchantTransactionId = reference_id,
+        params.merchantUserId = account_id,
+        params.amount = request.form_data.amount | multiply(100) | floatValue | splitFirst("."),
+        params.redirectUrl = connector.getUrl("/return"),
+        params.redirectMode = "POST",
+        params.callbackUrl = connector.getUrl("/notify"),
+        params.mobileNumber = request.form_data.phone_number,
+        params.paymentInstrument = {"type": "PAY_PAGE"}
+    %}
+    {% connector.store("merchant_transaction_id", params.merchantTransactionId) %}
+    {%
+
+        assign base64 = params | json | base64encode,
+        body.request = base64
+    %}
+    {%
+        signature = connector.sortAndSign("Sha256", "", body.request | append(paymentPath) | append(saltKey)), 
+        checksum = signature | append("###") | append(saltIndex),
+    %}
+    "url" : "{{paymentApiEndpoint}}{{paymentPath}}",
+    "method" : "POST",
+    "headers" : {
+        "Content-Type" : "application/json",
+        "Accept" : "application/json",
+        "X-VERIFY" : "{{checksum | strip}}"
+    },
+    "body" : "{{body | json}}"
+}

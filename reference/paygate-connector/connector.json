@@ -1,0 +1,58 @@
+{
+	"gateway_name"	:	"PayGate",
+	"description" : "PayGate is DPO SA's solution for accepting payments online. Offer your customers choice in payment methods to ensure they checkout, settle payments directly to your account, and easily reconcile purchases on your Merchant Access Portal (MAP)",
+	"type":"server_redirection",
+	"endpoints" : {
+		"/notify":{
+			"request_transform":"notify_request",
+			"response_transform":"notify_response",
+			"type":"notify"
+		},
+		"/initiate":{
+			"request_transform":"initiate_request",
+			"response_transform":"initiate_response",
+			"type":"initiate_payment"
+		},
+		"/redirect":{
+			"response_transform":"redirect_response",
+			"type":"redirect"
+		},
+		"/return":{
+			"request_transform":"return_request",
+			"response_transform":"return_response",
+			"type":"return"
+		},
+		"/failure":{
+			"response_transform":"failure_response",
+			"type":"failure"
+		}
+	},
+	"instance_fields":[
+		{
+			"field_label":"Enter your Paygate Name",
+			"field_name":"paygateID",
+			"field_type":"number",
+			"field_max_length":"25"
+		},
+		{
+			"field_label":"Enter your password",
+			"field_name":"password",
+			"field_type":"alphanumeric",
+			"field_min_length":"5",
+			"field_max_length":"25"
+		}
+	],
+	"shared_config":{
+		"supported_currencies" : ["ZAR"],
+		"supported_payment_modes" : ["credit_card", "debit_card"]
+	},
+	"error_codes" : {
+		"CNTRY_INVALID" : "113", "DATA_AMT_ZERO" : "132", "DATA_AMT_NUM" : "130",
+		"DATA_CREF" : "103", "DATA_DTTM" : "130", "DATA_INS" : "130", "DATA_PAY_REQ_ID" : "130",
+		"DATA_PM" : "130", "DATA_PW" : "143", "DATA_REGION" : "143", "DATA_URL" : "125", "INV_EMAIL" : "130",
+		"LOCALE_INVALID" : "143", "ND_INV_PGID" : "102", "NOT_LIVE_PM" : "121", "NO_TRANS_DATA" : "130", 
+		"PGID_NOT_EN" : "102", "TXN_CAN" : "112", "TXN_CMP" : "119", "TXN_PRC":  "100", "900002" : "108",
+		"900003" : "121", "900004" : "105", "900005" : "142", "900006" : "106", "900007" : "111", "900011" : "124",
+		"900207" : "114", "990053" : "100", "990028" : "112"
+	}
+}

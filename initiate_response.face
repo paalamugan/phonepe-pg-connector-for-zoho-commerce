@@ -1,0 +1,22 @@
+
+{%  
+    assign response_json = connector.queryStringToJson(response.response_text),
+    code = response_json.code,
+    data = response_json.data,
+%}
+{% if response_json.success == "true" && code == "PAYMENT_INITIATED" %}
+    {% assign location_url = connector.getUri("/redirect") %}
+    {% connector.store("merchant_id", data.merchantId) %}
+    {% connector.store("merchant_transaction_id", data.merchantTransactionId) %}
+    {% connector.store("transaction_id", data.transactionId) %}
+    {% connector.store("redirect_url", data.instrumentResponse.redirectInfo.url) %}
+{% else %}
+    {% connector.store("error_code", code) %}
+    {% assign location_url = connector.getUri("/failure") %}
+{% endif %}
+{
+    "status_code" : 302,
+    "headers" : {
+        "Location" : "{{location_url}}"
+    }
+}

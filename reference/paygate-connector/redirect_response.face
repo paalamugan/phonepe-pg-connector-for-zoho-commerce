@@ -1,0 +1,14 @@
+{
+    "headers" : {
+        "content-type" : "text/html"
+    },
+    {% assign pay_request_id = connector.retrieve("pay_request_id"),
+        checksum = connector.retrieve("checksum") 
+    %}
+
+    {% capture form %}
+<!DOCTYPE html><head></head><body onload='document.redirect.submit()''><form name='redirect' action='https://secure.paygate.co.za/payweb3/process.trans' method='POST' ><input type='hidden' name='PAY_REQUEST_ID' value={{ pay_request_id }}><input type='hidden' name='CHECKSUM' value={{ checksum }}></form></body></html>
+    {% endcapture %}
+
+    "response_text" : "{{form | strip}}"
+}

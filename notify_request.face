@@ -1,0 +1,78 @@
+{
+
+	{% comment %}
+PAY_METHOD ->
+CC 	Credit Card
+DC 	Debit Card
+EW 	E-Wallet
+BT 	Bank Transfer
+CV 	Cash Voucher
+PC 	Pre-Paid Card
+
+TRANSACTION_STATUS ->
+0 	Not Done
+1 	Approved
+2 	Declined
+3 	Cancelled
+4 	User Cancelled
+5 	Received by PayGate
+7 	Settlement Voided
+
+
+RESULT_CODE ->
+PAYMENT_SUCCESS Transaction Successful
+PAYMENT_PENDING Transaction Pending
+PAYMENT_DECLINED Transaction Declined
+PAYMENT_ERROR Transaction Error
+BAD_REQUEST Bad Request
+AUTHORIZATION_FAILED Authorization Failed
+INTERNAL_SERVER_ERROR Internal Server Error
+TRANSACTION_NOT_FOUND Transaction Not Found
+TIMED_OUT Timed Out
+
+	{% endcomment %}
+    {%
+        assign response_base64 = request.form_data.response,
+        response = connector.base64Decode(response_base64) | parseJSON,
+        code = response.code | trim,
+        data = response.data, 
+        transaction_details = connector.transactionDetails(),
+
+        url = connector.paymentNotificationUrl(),
+        params = connector.extractQueryParams(url)
+    %}
+
+    {% if response.success == "true" %}
+        {%  assign reference_id = data.merchantTransactionId,
+            params.gateway_reference_id = reference_id,
+            params.amount = data.amount | divide(100),
+            params.currency_code = data.currency | defaultValue("INR")
+        %}
+    	{% connector.store("notify_success_match","true") %}
+	    {% if code == "PAYMENT_SUCCESS" %}
+	    	{% params.transaction_status = connector.paymentSuccessStatus() %}
+		{% elif code == "PAYMENT_PENDING" %}
+	    	{% params.transaction_status = connector.paymentPendingStatus() %}
+		{% else %}
+	    	{% assign params.transaction_status = connector.paymentFailureStatus(), 
+               params.gateway_errorcode = code | trim,
+               params.zcm_error_code = connector.getErrorCode(params.gateway_errorcode) | trim
+            %}
+		{% endif %}
+
+		{% 	assign signKey = connector.getConfigData("signKey"),
+			signature = connector.sortAndSign("HmacSha256", "", params, signKey)
+		%}
+
+		{% if url contains "?" %}
+	    	{% url = url | append("&") %}
+		{% else %}
+	    	{% url = url | append("?") %}
+		{% endif %}
+
+		{% capture notify_data %}amount={{ params.amount }}&gateway_reference_id={{ params.gateway_reference_id }}&currency_code={{ params.currency_code }}&transaction_status={{ params.transaction_status }}{% if params.transaction_status == 0 %}&gateway_errorcode={{ params.gateway_errorcode }}&zcm_error_code={{ params.zcm_error_code }}{% endif %}&signature={{signature}}{% endcapture %}
+
+		"url" : "{{url | append(notify_data)}}",
+	    "method" : "POST"
+	{% endif %}
+}
