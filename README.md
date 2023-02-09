@@ -4,4 +4,4 @@ This is a PG connector for Zoho Commerce to integrate with PhonePe Payment Gatew
 
 ## Installation Setup
 
-[Please refer here](./Payment Gateway Connector-Help Guide.pdf) for the installation setup.
+[Please Refer Here](https://github.com/paalamugan/phonepe-pg-connector-for-zoho-commerce/files/10693993/Payment.Gateway.Connector-Help.Guide.pdf) for the installation setup.
